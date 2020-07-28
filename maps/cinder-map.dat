@@ -1,0 +1,18 @@
+# source cinder nodes (Cloudera)
+cn589|10.64.0.7|volume-|/dev/lxc
+cn761|10.64.0.22|volume-|/dev/lxc
+cn777|10.64.0.38|volume-|/dev/lxc
+
+# target cinder nodes (Clouder)
+f7533c4f-7259-460a-842c-6ae4e9f97955|10.125.0.12|volume-|/dev/cinder-volumes
+d69743f8-11e4-4b36-b70b-796a4ab6cc84|10.125.0.14|volume-|/dev/cinder-volumes
+96f89300-8384-45c8-9388-e6b837d084b2|10.125.0.13|volume-|/dev/cinder-volumes
+d4a2097d-6815-4aec-b0ae-98a4b43d575e|10.125.0.22|volume-|/dev/cinder-volumes
+1886a65c-94cf-48b9-88f7-7dec3d1d6747|10.125.0.23|volume-|/dev/cinder-volumes
+1a007cd0-1e44-4561-9a22-f40501b571d2|10.125.0.24|volume-|/dev/cinder-volumes
+
+# source cinder nodes (Dyvantage)
+8921c976-9a52-41cc-b6ef-44ec8c62ce74|172.31.19.101|volume-|/dev/cinder-volumes
+
+# target cinder nodes (Dyvantage)
+af151af1-33fb-428f-9a83-f7dae88607ca|172.31.19.102|volume-|/dev/cinder-volumes

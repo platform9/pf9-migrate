@@ -1,0 +1,87 @@
+#!/bin/bash
+
+# global vars (referenced in sourced Bash libraries)
+user_network_id=""
+user_fixed_ip=""
+flag_skip_validate_flavor=0
+instance_list=( )
+
+usage() {
+  echo "Usage: `basename $0` [-n <networkID>][-i <fixed-ip>][-v] <instanceName> [<instanceName>...]"
+  echo -e "\n[Options]"
+  echo "-n : use user-assigned network ID"
+  echo "-i : use user-assigned fixed-ip"
+  echo -e "-v : validate openstack login to source and target clouds\n"
+  exit 1
+}
+
+source globals
+
+# process parameters
+while [ $# -gt 0 ]; do
+  case ${1} in
+  --version)
+    stdout "Version: ${pkg_version}"
+    exit 0
+    ;;
+  -v)
+    validate_openstack ${pkg_configfile}
+    exit 0
+    ;;
+  -n)
+    if [ $# -lt 2 ]; then usage; fi
+    user_network_id=${2}
+    shift
+    ;;
+  -i)
+    if [ $# -lt 2 ]; then usage; fi
+    user_fixed_ip=${2}
+    shift
+    ;;
+  -sf)
+    flag_skip_validate_flavor=1
+    ;;
+  -h|--help)
+    usage
+    ;;
+  *)
+    break
+    ;;
+  esac
+  shift
+done
+if [ $# -eq 0 ]; then usage; fi
+
+# get instance list
+idx=0
+while [ $# -gt 0 ]; do
+    instance_list[((idx++))]=$1
+    shift
+done
+
+# perform single-instance discovery
+if [ ${#instance_list[@]} -eq 1 ]; then
+    discover ${instance_list[0]}
+fi
+
+# perform multi-instance discovery & migration
+if [ ${#instance_list[@]} -gt 1 ]; then
+    # run discovery
+    job_list=( )
+    pid_idx=0
+    for instance in "${instance_list[@]}"; do
+        instance_log=/tmp/${instance}.$$.log
+        rm -f ${instance_log} && touch ${instance_log}
+        if [ $? -eq 0 ]; then
+            discover ${instance} > ${instance_log} 2>&1 &
+            job_list[((pid_idx++))]="$!:${instance_log}"
+        fi
+    done
+
+    # monitor discovery threads (process IDs contained in job_list)
+    sleep 1
+    ${pkg_basedir}/monitor-logs ${job_list[@]}
+fi
+
+# exit cleanly
+exit 0

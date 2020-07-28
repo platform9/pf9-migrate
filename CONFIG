@@ -1,0 +1,34 @@
+# source-cloud : path to OpenStack RC for source cloud (cloud being migrated off)
+source-cloud|~/.ssh/source-cloud.rc
+
+# target-cloud : path to OpenStack RC for target cloud (cloud being migrated to)
+target-cloud|~/.ssh/target-cloud.rc
+
+# target-backend : Cinder Backend (from cinder get-pools)
+# example: c2fffff1b-18ff-41fb-bf95-378beb0ea9df@other-backend#rafpure
+target-backend|
+
+# pure storge
+pure-ipaddr|
+pure-username|
+pure-password|
+
+# glance endpoint
+source-glance-ep|https://api-os.eng.hortonworks.com:9292
+
+# rsync flags (to enable compression, use '-z')
+rsync-flags|-z
+
+# volume migration ['openstack', 'rsync-qemu']
+instance-migration-type|rsync-qemu
+instance-migration-user|pf9
+instance-migration-group|pf9group
+
+# volume migration ['openstack', 'rsync-lvm']
+volume-migration-type|rsync-lvm
+
+# ssh key
+source-ssh-username|dyvantage
+source-ssh-privatekey|~/.ssh/dyv-cloudera
+target-ssh-username|dyvantage
+target-ssh-privatekey|~/.ssh/dyv-cloudera

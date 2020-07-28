@@ -1,0 +1,5 @@
+configs/*
+migrations/*
+log/
+db/*
+pf9-migrate-venv/

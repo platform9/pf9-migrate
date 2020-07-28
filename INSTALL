@@ -1,0 +1,278 @@
+#!/bin/bash
+
+# define global vars
+source globals
+
+# initialize flags
+upgrade_flag=0
+debug_flag=0
+
+# functions
+usage() {
+    echo "Usage: $(basename $0)"
+    echo "	  [-i|--init]"
+    echo "	  [-u|--upgrade]"
+    echo "	  [-v] Send INFO messages to stdout"
+    echo "	  [-vv] Send INFO messages to stdout set logging level to debug"
+    echo "	  [-vvv] Send INFO and DEBUG messages to stdout set logging level to debug"
+    echo ""
+    exit 0
+}
+
+: "${banner_return:=''}"
+banner() {
+    banner_message="#  $1  #"
+    banner_wrapper=$(yes "#" | head -$(echo -n "${banner_message}" | wc -c) | paste -s -d '\0' - )
+    banner_return="\n${banner_wrapper}\n${banner_message}\n${banner_wrapper}"
+}
+
+get_os_platform() {
+    # Get os_platform and os_version
+    case $(uname) in
+	"Darwin")
+	    os_platform="macos"
+	    os_version=$(sw_vers | grep ^ProductVersion | awk -F : '{print $2}' | awk -F ' ' '{print $1}')
+	    info "OS_Platform: ${os_platform}"
+	    info "OS_Version: ${os_version}"
+	    if [[ ! "${os_version}" == 10.* ]]; then
+		assert "unsupported MacOS release: ${os_version}\nSupported OSX versions: 10.0 or higher"
+	    fi
+	    ;;
+	"Linux")
+	    os_platform=$(cat /etc/os-release | grep '^ID\=.*' | sed 's/^.*=//g')
+	    os_version=$(cat /etc/os-release | grep '^VERSION_ID\=.*' | sed 's/^.*=//g' | sed 's/"//g')
+	    info "OS_Platform: ${os_platform}"
+	    info "OS_Version:${os_version}"
+	    case ${os_platform} in
+		"centos")
+		    if [ 1 -eq $(echo "${os_version} >= 7.0" | bc -l) ]; then
+			assert "Unsupported Release: ${os_platform} - ${os_version}\nCentOS version must be 7.0 or higher"
+		    fi
+		    ;;
+	        "ubuntu")
+		    if [ 1 -ne `echo "${os_version} > 16.04" | bc -l` ]; then
+			assert "Unsupported Release: ${os_platform} - ${os_version}\nUbuntu version must be 16.04 or higher"
+		    fi
+		    stdout "--> Install OS Dependancies"
+		    if ! (sudo apt-get update | debug > /dev/null 2>&1); then
+			assert "Apt Update failed"; fi
+		    if ! (sudo apt-get install -y apt-utils ucommon-utils jq | debug > /dev/null 2>&1); then
+			assert "Installation of OS Dependancies failed"; fi
+		    ;;
+		*)
+		    assert "Unsupported Platform: ${os_platform}\nSupported Linux Distros are Ubuntu 16.04+ and Centos 7.0+"
+		    ;;
+	    esac
+	    ;;
+        *)
+	    assert "unsupported platform: ${os_platform} - ${os_version}\nSupported Platforms are Ubuntu, Centos, and OSX"
+	    ;;
+    esac
+}
+
+get_python_version() {
+    if python_exec=$(which python3); then
+	python_version="$(python3 <<< 'import sys; print(sys.version_info[0])')"
+	info "Python executable: ${python_exec}"
+	info "Python Version: $(python3 <<< 'import sys; print(sys.version)')"
+    elif python_exec=$(which python); then
+	python_version="$(python <<< 'import sys; print(sys.version_info[0])')"
+	info "Python executable: ${python_exec}"
+	info "Python Version: $(python <<< 'import sys; print(sys.version)')"
+	if [ 1 -eq $(echo "${python_version} < 3.0" | bc -l) ]; then
+	    assert "Python 3.0+ is required. Current Python version is: $(python <<< 'import sys; print(sys.version)')"
+	fi
+    else
+	assert "Python not installed. Python3.0+ is required"
+    fi
+}
+
+install_virtualenv() {
+    stdout "Initializing Virtual Environment using Python ${python_exec}"
+    debug "Check for venv"
+    if (${python_exec} -m venv ${python_venv} | debug > /dev/null 2>&1); then
+        stdout "Virtual Environment Created: ${python_venv}"
+    else
+        debug "Python3 venv not installed. Attempting to install"
+        case ${os_platform} in
+        "ubuntu")
+	        debug "Running apt-get update"
+          if ! (sudo apt-get update | debug > /dev/null 2>&1); then assert "apt-get update failed. Please resolve and re-run installer."; fi
+          debug "Install Python3 dependancies via apt-get"
+          if ! (sudo apt-get install -y build-essential libssl-dev libffi-dev python-dev python3-venv | debug > /dev/null 2>&1); then
+              assert "Installation of python3 dependancies failed. Please install manually and re-run installer."
+          else
+              if (${python_exec} -m venv ${python_venv} > /dev/null 2>&1); then
+                  stdout "Virtual Environment Created: ${python_venv}"
+              else
+                  assert "Installation of python3-venv failed. Please install manually and re-run installer."
+              fi
+          fi
+          ;;
+        "centos")
+            stdout "Not Implemented"
+            ;;
+        *)
+            stdout "Unsupported operating system: ${os_platform}"
+            ;;
+        esac
+    fi
+}
+
+upgrade_software() {
+    stdout "[Performing Software Upgrade]"
+
+    # validate that the current directory is not ~/pf9-migrate
+    if [ "$(pwd)" == "${pkg_basedir}" ]; then assert "ERROR: you have to perform the upgrade from another directory (not ${pkg_basedir})"; fi
+
+    # validate installation directory exists
+    stdout "--> Validating existing installation (located in ${pkg_basedir})"
+    if [ ! -r ${pkg_basedir} ]; then assert "ERROR: existing installation not found"; fi
+
+    # validate configuration file
+    local config_file=${pkg_basedir}/CONFIG
+    stdout "--> Validating configuration file: ${config_file}"
+    if [ ! -r ${config_file} ]; then assert "ERROR: configuration file missing: ${config_file}"; fi
+
+    # create base directory for backups
+    local backup_basedir=~/.pf9-migrate
+    if [ ! -r ${backup_basedir} ]; then
+        mkdir ${backup_basedir}
+        if [ $? -ne 0 ]; then assert "ERROR: failed to create base directory for backups: ${backup_basedir}"; fi
+    fi
+
+    # create release-specific backup directory
+    local backup_dir=${backup_basedir}/pf9-migrate.pre-${pkg_version}
+    stdout "--> Backing up existing software installation to ${backup_dir}"
+    if [ ! -r ${backup_dir} ]; then
+        mkdir ${backup_dir}
+        if [ $? -ne 0 ]; then assert "ERROR: failed to create release-specific backup directory: ${backup_dir}"; fi
+
+        # backup eisting installation
+        cp -rf ${pkg_basedir}/* ${backup_dir} > /dev/null 2>&1
+        if [ $? -ne 0 ]; then assert "ERROR: failed to backup configuration"; fi
+    else
+        stdout "    skipping (already backed up)"
+    fi
+
+    # perform software upgrade
+    stdout "--> Performing software upgrade"
+    cp -rf * ${pkg_basedir}/
+    if [ $? -ne 0 ]; then assert "ERROR: failed to update code in ${pkg_basedir}"; fi
+
+    # restore configuration file
+    backup_config_file=${backup_dir}/CONFIG
+    stdout "--> Restoring configuration file: ${config_file} (from ${backup_config_file})"
+    cp -f ${backup_config_file} ${config_file} > /dev/null 2>&1
+    if [ $? -ne 0 ]; then assert "ERROR: failed to restore configuration"; fi
+}
+
+
+##################################################################
+## main
+##################################################################
+# parse commandline
+while [ $# -gt 0 ]; do
+    case ${1} in
+	-h|--help)
+	    usage
+	    exit 0
+	    ;;
+	-i|--init)
+	    init_flag=1
+	    shift
+	    ;;
+	-u|--upgrade)
+	    upgrade_flag=1
+	    shift
+	    ;;
+	-v)
+	    debug_flag=1
+	    shift
+	    ;;
+	-vv)
+	    debug_flag=2
+	    shift
+	    ;;
+	-vvv)
+	    debug_flag=3
+	    shift
+	    ;;
+	*)
+	    echo "$i is not a valid command line option."
+	    echo ""
+	    echo "For help, please use $0 -h"
+	    echo ""
+	    exit 1
+	    ;;
+    esac
+done
+
+debug "Checking Upgrade Flag"
+if [ ${upgrade_flag} -eq 1 ]; then
+    upgrade_software
+    exit 0
+fi
+
+debug "Checking Init Flag"
+if [ ${init_flag} -eq 1 ]; then
+    stdout "Initializing Environment"
+    if [ -d ${pkg_basedir} ]; then
+        pkg_dirs=("${python_venv} $(dirname ${log_file})")
+        for pkg_dir in $pkg_dirs; do
+            stdout "--> removing ${pkg_dir}"
+            if ! $(rm -Rf ${pkg_dir}); then assert "Deletion of ${pkg_dir} Failed"; fi
+        done
+    fi
+    init_log_file
+fi
+
+banner "Installing: ${pkg_name}"
+stdout "${banner_return}"
+
+stdout "Logging to: ${log_file}"
+
+# get platform
+stdout "Validating Platform"
+get_os_platform
+
+# validate python stack (try python3 first)
+stdout "Verifying Python"
+get_python_version
+
+debug "Checking virtualenv"
+debug "python_venv: ${python_venv}"
+debug "venv_activate: ${venv_activate}"
+if [ ! -r ${python_venv} ]; then
+    stdout "Installing virtualenv"
+    install_virtualenv
+elif ! $(${python_venv}/bin/python -V > /dev/null 2>&1); then
+    stdout "Installing virtualenv"
+    install_virtualenv
+else
+    stdout "Using existing Virtual Environment"
+fi
+
+stdout "Installing Dependancies"
+stdout "--> Upgrading PIP"
+if ! (${venv_python} -m pip install --upgrade --ignore-installed pip setuptools wheel | debug > /dev/null 2>&1); then
+    assert "Pip Upgrade failed"
+else
+    info "Pip Upgrade complete"
+fi
+
+stdout "--> Installing Python Dependancies"
+if ! (${venv_python} -m pip install -r requirements.txt --upgrade | debug > /dev/null 2>&1); then
+    assert "Installation of Python Dependancies failed"
+fi
+
+stdout "--> Patching OpenStack Client (openstackclient/image/v2/image.py)"
+patch_target=${python_venv}/lib/python3.?/site-packages/openstackclient/image/v2/image.py
+sed -i '/# distinguish cases where:/i \        return (None, None)' ${patch_target}
+if [ $? -ne 0 ]; then assert "failed to apply patch"; fi
+
+# display completion message
+stdout  "Installation Complete, to start run:"
+stdout  "source ${venv_activate} && ${pkg_binary}"
+
+exit 0

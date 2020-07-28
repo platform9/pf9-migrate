@@ -1,0 +1,90 @@
+#!/bin/bash
+
+# Set Version
+: "${pkg_version:=0.4.2}"
+
+# Set path from command output
+# This removes the risk of double quotes using the litteral '~'
+: "${pkg_name:=pf9-migrate}"
+: "${pkg_basedir:=$(dirname ~/${pkg_name}/.)}"
+: "${pkg_binary:=${pkg_basedir}/${pkg_name}}"
+: "${pkg_libdir:=${pkg_basedir}/lib}"
+: "${pkg_configfile:=${pkg_basedir}/CONFIG}"
+: "${pkg_repo:=https://github.com/dyvantage/pf9-migrate.git}"
+: "${python_venv:=${pkg_basedir}/${pkg_name}-venv}"
+: "${venv_activate:=${python_venv}/bin/activate}"
+: "${venv_python:=${python_venv}/bin/python}"
+: "${venv_pip:=${python_venv}/bin/pip}"
+: "${pip_url:=https://bootstrap.pypa.io/get-pip.py}"
+: "${pip_path:=/tmp/get_pip.py}"
+: "${init_flag:=0}"
+: "${os_platform:=''}"
+: "${os_version:=''}"
+: "${python_exec:=''}"
+: "${python_version=''}"
+: "${hv_map:=${pkg_basedir}/maps/hv-map.dat}"
+: "${cinder_map:=${pkg_basedir}/maps/cinder-map.dat}"
+: "${volume_type_map:=${pkg_basedir}/maps/project-volumeType-map.dat}"
+: "${az_map:=${pkg_basedir}/maps/az-map.dat}"
+: "${lvm_snapshot_buffer_size='1G'}"
+: "${dd_blocksize='1048576'}"
+: "${ssh_default_key='techops-official'}"
+
+# Transfer Rate Estimation Metrics
+: "${xfer_download_speed:=300}"
+: "${xfer_upload_speed:=300}"
+
+# Timeouts
+: "${TIMEOUT_INSTANCE_STATE:=300}"
+: "${TIMEOUT_IMAGE_STATE:=3600}"
+: "${TIMEOUT_VOLUME_STATE:=3600}"
+: "${TIMEOUT_IMAGE_DOWNLOAD:=3600}"
+: "${WAIT_FOR_SLEEPTIME:=2}"
+
+# Behavioral flags
+: "${FLAG_SKIP_EPHEMERAL_MIGRATION:=0}"
+: "${RETRY_ATTEMPTS:=5}"
+: "${RETRY_DELAY:=5}"
+
+# Ordinals for indexing lineArgs (which are splits() of CONFIG lines)
+: "${INSTANCEVOL_SOURCE_INSTANCE_UUID:=1}"
+: "${INSTANCEVOL_TARGET_VOLUME_NAME:=2}"
+: "${INSTANCEVOL_SOURCE_VOLTYPE:=3}"
+: "${INSTANCEVOL_SOURCE_UUID:=4}"
+: "${INSTANCEVOL_SOURCE_PROJECT_NAME:=5}"
+: "${INSTANCEVOL_SOURCE_DEVICE_PATH:=6}"
+: "${INSTANCEVOL_IS_BOOTABLE:=7}"
+: "${INSTANCE_NAME:=1}"
+: "${INSTANCE_TARGET_FLAVOR_ID:=2}"
+: "${INSTANCE_TYPE:=3}"
+: "${INSTANCE_TARGET_NETWORK_ID:=4}"
+: "${INSTANCE_TARGET_SG_ID:=5}"
+: "${INSTANCE_SOURCE_FIXED_IP:=6}"
+: "${INSTANCE_TARGET_IMAGE_ID:=7}"
+: "${INSTANCE_TARGET_PROJECT_ID:=8}"
+: "${INSTANCE_SOURCE_AZ:=9}"
+: "${INSTANCE_SOURCE_HYPERVISOR:=10}"
+: "${INSTANCE_SOURCE_INSTANCE_UUID:=11}"
+: "${PORT_FIXED_IP:=1}"
+: "${PORT_MAC:=2}"
+: "${PORT_NETWORK_NAME:=3}"
+: "${PORT_NETWORK_UUID:=4}"
+: "${PORT_TARGET_NETWORK_UUID:=5}"
+
+# Initialize Logger
+: "${debug_flag:=2}"
+: "${log_file:=${pkg_basedir}/log/${pkg_name}.log}"
+source lib/logger.sh
+init_log_file
+debug "Logger Started: ${log_file}"
+
+# include libraries
+libs=$(ls ${pkg_libdir}/*.sh)
+for lib in ${libs}; do
+  debug "Sourcing $lib"
+  if [ -r ${lib} ]; then
+    if ! source ${lib}; then assert "Failed sourcing ${lib}"; fi
+  else
+    assert "error: failed to load library ${lib}"
+  fi
+done

@@ -1,0 +1,69 @@
+#/bin/bash
+
+# process command-line arguments
+if [ $# -eq 0 ]; then exit 0; fi
+job_list=( $* )
+
+# report functions
+header_char='-'
+banner_char='*'
+IF1=14; IB1=$(printf '%*s' "$IF1" | tr ' ' "$header_char")
+IF2=10; IB2=$(printf '%*s' "$IF2" | tr ' ' "$header_char")
+IF3=40; IB3=$(printf '%*s' "$IF3" | tr ' ' "$header_char")
+IF4=74; IB4=$(printf '%*s' "$IF4" | tr ' ' "$header_char")
+IFn=$((IF1+IF2+IF3+IF4+4))
+report_separator=$(printf '%*s' "$IFn" | tr ' ' "$header_char")
+
+report_header() {
+  echo "${1}"
+  printf "%-${IF1}s %-${IF2}s %-${IF3}s %-${IF4}s\n" \
+         "${IB1}" "${IB2}" "${IB3}" "${IB4}"
+  printf "%-${IF1}s %-${IF2}s %-${IF3}s %-${IF4}s\n" \
+         "${2}" "${3}" "${4}" "${5}"
+  printf "%-${IF1}s %-${IF2}s %-${IF3}s %-${IF4}s\n" \
+         "${IB1}" "${IB2}" "${IB3}" "${IB4}"
+}
+
+report_row() {
+  f1=$(echo ${1} | cut -c 1-${IF1})
+  f2=$(echo ${2} | cut -c 1-${IF2})
+  f3=$(echo ${3} | cut -c 1-${IF3})
+  f4=$(echo ${4} | cut -c 1-${IF4})
+  printf "%-${IF1}s %-${IF2}s %-${IF3}s %-${IF4}s\n" \
+         "${f1}" "${f2}" "${f3}" "${f4}"
+}
+
+poll_interval=5
+while :; do
+    # display header
+    clear
+    report_header "RUNNING ${#job_list[@]} CONCURRENT JOBS:" "PID (Thread)" "Status" "Log Location" "Last Log"
+
+    # get/display last line of each log
+    flag_complete=1
+    for job in "${job_list[@]}"; do
+        pid=$(echo "${job}" | cut -d : -f1)
+        log=$(echo "${job}" | cut -d : -f2)
+        ps -p ${pid} > /dev/null 2>&1
+        if [ $? -eq 0 ]; then
+            pid_status="running"
+            flag_complete=0
+        else
+            pid_status="stopped"
+        fi
+        last_log=$(tail -1 ${log})
+        report_row "${pid}" "${pid_status}" "${log}" "${last_log}"
+    done
+
+    # break if all threads are finished
+    if [ ${flag_complete} -eq 1 ]; then break; fi
+
+    # print dots for <poll_interval> seconds
+    cnt=0
+    while [ ${cnt} -lt ${poll_interval} ]; do
+        echo -n "."
+        sleep 1
+        ((cnt++))
+    done
+    echo
+done
