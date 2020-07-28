@@ -1,5 +1,5 @@
 # RELEASE NOTES
-OpenStack Migration Tool v0.4.2
+OpenStack Migration Tool v0.4.3
 
 # UPDATES FOR THIS RELEASE
 1. This is a documentation-only release.
