@@ -5,7 +5,7 @@ OpenStack Migration Tool v0.4.3
 1. This is a documentation-only release.
 
 # KNOWN ISSUES
-1. Prior to migration, the source instance and shutdown and locked. Only an administrator can unlock and boot the source isntance once it is migrated.
+1. Prior to migration, the source instance is shutdown and locked. Only an administrator can unlock and boot the source instance once it is migrated.
 2. Since implementing Server Group migration (in v0.2), the `source-cloud.rc` and `target-cloud.rc` files must be mapped to the same project.
 
 # UPDATES (FROM PREVIOUS RELEASES)
