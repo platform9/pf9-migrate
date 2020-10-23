@@ -300,6 +300,17 @@ discover() {
             continue
         fi
 
+        mig_status=$(cat ${volume_db} | jq '."os-vol-mig-status-attr:migstat"' | sed -e "s/\"//g")
+        if [ "${mig_status}" == "success" ]; then
+			mig_name_id=$(cat ${volume_db} | jq '."os-vol-mig-status-attr:name_id"' | sed -e "s/\"//g")
+			if [ -z "${mig_name_id}" ]; then
+				stdout "WARNING: this volume has been previously migrated using 'openstack volume migrate', but the UUID for the new volume could not be determined."
+				continue
+			fi
+
+            stdout "INFO: this volume has been previously migrated using 'openstack volume migrate'"
+        fi
+
         is_bootable=$(cat ${volume_db} | jq '.bootable' | sed -e "s/\"//g")
         if [ -z "${is_bootable}" ]; then
             stdout "WARNING: failed to discovery is_bootable for volume ${colval}"
@@ -342,6 +353,16 @@ discover() {
     # config -> neutron
     echo "[neutron]" >> ${config_file}
     echo "port|${fixed_ip}|${port_mac}|${network_name}|${network_uuid}|${target_network_id}" >> ${config_file}
+
+    # config -> openstack-volume-migrate
+	echo "[openstack-volume-migrate]" >> ${config_file}
+	if [ "${mig_status}" == "success" ]; then
+		echo "mig_status|${mig_status}" >> ${config_file}
+		echo "mig_name_id|${mig_name_id}" >> ${config_file}
+	else
+		echo "mig_status|None" >> ${config_file}
+		echo "mig_name_id|" >> ${config_file}
+	fi
 
     # config -> instance
     echo "[instance]" >> ${config_file}
