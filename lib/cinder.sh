@@ -180,8 +180,6 @@ migrate_volume_lvm_rsync() {
 	fi
     local cinder_device_basename=$(lookup_cinder_device_basename ${v_host})
     local lvm_volume_group=$(echo "${cinder_device_basename}" | awk -F \/ '{print $NF}')
-    debug "DBG: mig_status = ${mig_status}"
-    debug "DBG: mig_name_id = ${mig_name_id}"
 	if [ "${mig_status}" == "success" ]; then
 		local source_lv_path="${cinder_device_basename}/${cinder_volume_basename}${mig_name_id}"
 	else
