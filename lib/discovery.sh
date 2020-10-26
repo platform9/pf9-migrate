@@ -308,7 +308,10 @@ discover() {
 				continue
 			fi
 
-            stdout "INFO: this volume has been previously migrated using 'openstack volume migrate'"
+            stdout "INFO: The following volume has been previously migrated using 'openstack volume migrate':"
+		else
+			mig_status="-"
+			mig_name_id="-"
         fi
 
         is_bootable=$(cat ${volume_db} | jq '.bootable' | sed -e "s/\"//g")
@@ -331,7 +334,7 @@ discover() {
             bootvol_type="${vol_type}"
         fi
 
-        extravol_metadata[(extra_idx++)]="${colval}|${vol_device}|${is_bootable}|${vol_type}|${vol_size_gb}"
+        extravol_metadata[(extra_idx++)]="${colval}|${vol_device}|${is_bootable}|${vol_type}|${vol_size_gb}|${mig_status}|${mig_name_id}"
         print_voume_row "${colval}" "${vol_device}" "${is_bootable}" "${vol_type}" "${vol_size_gb}" "${vol_migration_time}"
         ((num_volumes++))
     done
@@ -353,16 +356,6 @@ discover() {
     # config -> neutron
     echo "[neutron]" >> ${config_file}
     echo "port|${fixed_ip}|${port_mac}|${network_name}|${network_uuid}|${target_network_id}" >> ${config_file}
-
-    # config -> openstack-volume-migrate
-	echo "[openstack-volume-migrate]" >> ${config_file}
-	if [ "${mig_status}" == "success" ]; then
-		echo "mig_status|${mig_status}" >> ${config_file}
-		echo "mig_name_id|${mig_name_id}" >> ${config_file}
-	else
-		echo "mig_status|None" >> ${config_file}
-		echo "mig_name_id|" >> ${config_file}
-	fi
 
     # config -> instance
     echo "[instance]" >> ${config_file}
@@ -403,10 +396,12 @@ discover() {
         extravol_device=$(echo ${colval} | cut -d '|' -f2)
         extravol_is_bootable=$(echo ${colval} | cut -d '|' -f3)
         extravol_type=$(echo ${colval} | cut -d '|' -f4)
+		extravol_mig_status=$(echo ${colval} | cut -d '|' -f6)
+		extravol_mig_name_id=$(echo ${colval} | cut -d '|' -f7)
 
         extravol_device_short=$(echo ${extravol_device} | cut -d '/' -f3)
         extravol_name="${discovery_instanceName}-${extravol_device_short}"
-        echo "instanceVol|${discovery_instanceName}|${extravol_name}|${extravol_type}|${extravol_uuid}|${project_name}|${extravol_device}|${extravol_is_bootable}" >> ${config_file}
+        echo "instanceVol|${discovery_instanceName}|${extravol_name}|${extravol_type}|${extravol_uuid}|${project_name}|${extravol_device}|${extravol_is_bootable}|${extravol_mig_status}|${extravol_mig_name_id}" >> ${config_file}
     done
 
     # config -> extra security groups

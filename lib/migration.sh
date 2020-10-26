@@ -261,24 +261,10 @@ migrate() {
             SOURCE_UUID=${lineArgs[$INSTANCEVOL_SOURCE_UUID]}
             SOURCE_PROJECT_NAME=${lineArgs[$INSTANCEVOL_SOURCE_PROJECT_NAME]}
             SOURCE_DEVICE_PATH=${lineArgs[$INSTANCEVOL_SOURCE_DEVICE_PATH]}
+            SOURCE_MIG_STAT=${lineArgs[$INSTANCEVOL_SOURCE_MIG_STAT]}
+            SOURCE_MIG_NAME_ID=${lineArgs[$INSTANCEVOL_SOURCE_MIG_NAME_ID]}
             IS_BOOTABLE=${lineArgs[$INSTANCEVOL_IS_BOOTABLE]}
             if [ "${IS_BOOTABLE}" == "true" ]; then instance_volume=${TARGET_VOLUME_NAME}; fi
-
-            # check for mig_status
-            mig_config=$(get_config_line "mig_status" 0 ${config_array[@]})
-            if [ $? -ne 0 ]; then assert "ERROR: failed to get mig_status"; fi
-            keypairArgs=($(parse_config_line "${mig_config}"))
-            mig_status=${keypairArgs[1]}
-
-			# initialize and check for mig_name_id
-			mig_name_id="-"
-			if [ "${mig_status}" == "success" ]; then
-				# get name_id
-				remap_config=$(get_config_line "mig_name_id" 0 ${config_array[@]})
-				if [ $? -ne 0 ]; then assert "ERROR: failed to get mig_name_id"; fi
-				keypairArgs=($(parse_config_line "${remap_config}"))
-				mig_name_id=${keypairArgs[1]}
-			fi
 
             # call configuration-specific volume migration function
             case ${volume_migration_type} in
@@ -291,7 +277,7 @@ migrate() {
                 fi
                 ;;
             rsync-lvm)
-                migrate_volume_lvm_rsync ${SOURCE_INSTANCE_UUID} ${TARGET_VOLUME_NAME} ${SOURCE_UUID} ${mig_status} ${mig_name_id} ${IS_BOOTABLE} ${SOURCE_PROJECT_NAME} ${osrc_source} ${osrc_target}
+                migrate_volume_lvm_rsync ${SOURCE_INSTANCE_UUID} ${TARGET_VOLUME_NAME} ${SOURCE_UUID} ${SOURCE_MIG_STAT} ${SOURCE_MIG_NAME_ID} ${IS_BOOTABLE} ${SOURCE_PROJECT_NAME} ${osrc_source} ${osrc_target}
                 if [ $? -ne 0 ]; then
                     stdout "WARNING: failed to migrate volume, volume name = ${lineArgs[1]}:${lineArgs[2]}"
                 else
