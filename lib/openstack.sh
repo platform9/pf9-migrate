@@ -380,7 +380,11 @@ create_instance_from_volume() {
     fi
 
     source ${openstack_rc} > /dev/null 2>&1
-    local cmd="openstack server create --volume ${instance_volume} --flavor ${instance_flavor} ${net_flags} --key-name ${ssh_keypair} --security-group ${instance_sec_group} --availability-zone ${instance_az} ${config_drive_flags} ${server_group_flags} ${instance_properties} ${instance_name}"
+    if [ "${ssh_keypair}" == "null" ]; then
+	local cmd="openstack server create --volume ${instance_volume} --flavor ${instance_flavor} ${net_flags} --security-group ${instance_sec_group} --availability-zone ${instance_az} ${config_drive_flags} ${server_group_flags} ${instance_properties} ${instance_name}"
+    else
+	local cmd="openstack server create --volume ${instance_volume} --flavor ${instance_flavor} ${net_flags} --key-name ${ssh_keypair} --security-group ${instance_sec_group} --availability-zone ${instance_az} ${config_drive_flags} ${server_group_flags} ${instance_properties} ${instance_name}"
+    fi
     debug "    cmd: ${cmd}"
     eval ${cmd} | debug
     return $?
@@ -428,7 +432,11 @@ create_instance_from_image() {
     fi
 
     source ${openstack_rc} > /dev/null 2>&1
-    local cmd="openstack --os-project-id ${instance_project_id} server create --flavor ${instance_flavor} --image ${instance_image} ${net_flags} --key-name ${ssh_keypair} --security-group ${instance_sec_group} --availability-zone ${instance_az} ${config_drive_flags} ${server_group_flags} ${instance_properties} ${instance_name}"
+    if [ "${ssh_keypair}" == "null" ]; then
+    	local cmd="openstack --os-project-id ${instance_project_id} server create --flavor ${instance_flavor} --image ${instance_image} ${net_flags} --security-group ${instance_sec_group} --availability-zone ${instance_az} ${config_drive_flags} ${server_group_flags} ${instance_properties} ${instance_name}"
+    else
+    	local cmd="openstack --os-project-id ${instance_project_id} server create --flavor ${instance_flavor} --image ${instance_image} ${net_flags} --key-name ${ssh_keypair} --security-group ${instance_sec_group} --availability-zone ${instance_az} ${config_drive_flags} ${server_group_flags} ${instance_properties} ${instance_name}"
+    fi
     debug "cmd: ${cmd}" 
     eval ${cmd} | debug
     return $?
