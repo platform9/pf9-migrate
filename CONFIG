@@ -14,7 +14,7 @@ pure-username|
 pure-password|
 
 # glance endpoint
-source-glance-ep|https://api-os.eng.hortonworks.com:9292
+source-glance-ep|https://source-cloud-fqdn.com:9292
 
 # rsync flags (to enable compression, use '-z')
 rsync-flags|-z
@@ -29,6 +29,6 @@ volume-migration-type|rsync-lvm
 
 # ssh key
 source-ssh-username|dyvantage
-source-ssh-privatekey|~/.ssh/dyv-cloudera
+source-ssh-privatekey|~/.ssh/dyv-key
 target-ssh-username|dyvantage
-target-ssh-privatekey|~/.ssh/dyv-cloudera
+target-ssh-privatekey|~/.ssh/dyv-key
