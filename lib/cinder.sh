@@ -121,14 +121,16 @@ get_volume_lv_size() {
 
 migrate_volume_lvm_rsync() {
     debug "migrate_volume_lvm_rsync():"
-    if [ $# -ne 7 ]; then return; fi
+    if [ $# -ne 9 ]; then return; fi
     local instance_uuid=${1}
     local volume_name=${2}
     local volume_uuid=${3}
-    local is_bootable=${4}
-    local project_name=${5}
-    local source_rc=${6}
-    local target_rc=${7}
+    local mig_status=${4}
+    local mig_name_id=${5}
+    local is_bootable=${6}
+    local project_name=${7}
+    local source_rc=${8}
+    local target_rc=${9}
     stdout "\n[Cinder Volume Migration]"
     stdout "--> Source volume: ${volume_name}"
 
@@ -171,10 +173,18 @@ migrate_volume_lvm_rsync() {
     local source_cinder_ip=$(lookup_cinder_host_ip ${v_host})
     if [ -z "${source_cinder_ip}" ]; then assert "ERROR: failed to map Cinder node: ${v_host} (update ${cinder_map})"; fi
     local cinder_volume_basename=$(lookup_cinder_vol_basename ${v_host})
-    local source_lv_name="${cinder_volume_basename}${volume_uuid}"
+	if [ "${mig_status}" == "success" ]; then
+		local source_lv_name="${cinder_volume_basename}${mig_name_id}"
+	else
+		local source_lv_name="${cinder_volume_basename}${volume_uuid}"
+	fi
     local cinder_device_basename=$(lookup_cinder_device_basename ${v_host})
     local lvm_volume_group=$(echo "${cinder_device_basename}" | awk -F \/ '{print $NF}')
-    local source_lv_path="${cinder_device_basename}/${cinder_volume_basename}${volume_uuid}"
+	if [ "${mig_status}" == "success" ]; then
+		local source_lv_path="${cinder_device_basename}/${cinder_volume_basename}${mig_name_id}"
+	else
+		local source_lv_path="${cinder_device_basename}/${cinder_volume_basename}${volume_uuid}"
+	fi
     local snapshot_name="${volume_uuid}-snapshot"
     local snapshot_path="${cinder_device_basename}/${snapshot_name}"
     stdout "--> LV Path (source hypervisor): ${source_cinder_ip}:${source_lv_path}"
