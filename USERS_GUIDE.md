@@ -84,9 +84,9 @@ The following settings define the method for migrating data (i.e. ephemeral imag
 
 The following settings define the SSH User & Key to use when accessing Hypervisors and Cinders node in the source and target clouds:
 - `source-ssh-username|dyvantage`
-- `source-ssh-privatekey|~/.ssh/dyv-cloudera`
+- `source-ssh-privatekey|~/.ssh/dyv-cloud`
 - `target-ssh-username|dyvantage`
-- `target-ssh-privatekey|~/.ssh/dyv-cloudera`
+- `target-ssh-privatekey|~/.ssh/dyv-cloud`
 
 ### maps/hv-map.dat
 The Hypervisor Mapping File (`maps/hv-map.dat`) defines (potentially) node-specific settings for each KVM Hypervisor in both source and target clouds.  Each line in the file has the following format:
@@ -176,7 +176,7 @@ SOURCE-CLOUD: Discovering instance: Name = tgt01
  --> image_id = ee81f999-63a9-7251-ae03-ea8f54299fe3
  --> flavor = m1.small
  --> availability_zone = nova
- --> ssh_keyname = dyv-cloudera
+ --> ssh_keyname = dyv-cloud
  --> properties = []
  --> config_drive = [True]
  --> fixed_ip = 172.31.20.8
@@ -184,7 +184,7 @@ SOURCE-CLOUD: Discovering instance: Name = tgt01
 TARGET-CLOUD: looking up UUIDs for named resources
  --> target_network_id = 89cda127-eeab-413d-80ff-305e99ad172a
  --> flavor_id = 2
- --> target_ssh_key = dyv-cloudera
+ --> target_ssh_key = dyv-cloud
  --> target_project_id = 4c3afccafd344fc7b16c626b8dc47b94
  --> target_image_id = ee81f999-63a9-7251-ae03-ea8f54299fe3
 
