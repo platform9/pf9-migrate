@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set Version
-: "${pkg_version:=0.4.4}"
+: "${pkg_version:=0.4.5}"
 
 # Set path from command output
 # This removes the risk of double quotes using the litteral '~'
@@ -53,6 +53,8 @@
 : "${INSTANCEVOL_SOURCE_UUID:=4}"
 : "${INSTANCEVOL_SOURCE_PROJECT_NAME:=5}"
 : "${INSTANCEVOL_SOURCE_DEVICE_PATH:=6}"
+: "${INSTANCEVOL_SOURCE_MIG_STAT:=8}"
+: "${INSTANCEVOL_SOURCE_MIG_NAME_ID:=9}"
 : "${INSTANCEVOL_IS_BOOTABLE:=7}"
 : "${INSTANCE_NAME:=1}"
 : "${INSTANCE_TARGET_FLAVOR_ID:=2}"

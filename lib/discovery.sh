@@ -300,6 +300,20 @@ discover() {
             continue
         fi
 
+        mig_status=$(cat ${volume_db} | jq '."os-vol-mig-status-attr:migstat"' | sed -e "s/\"//g")
+        if [ "${mig_status}" == "success" ]; then
+			mig_name_id=$(cat ${volume_db} | jq '."os-vol-mig-status-attr:name_id"' | sed -e "s/\"//g")
+			if [ -z "${mig_name_id}" ]; then
+				stdout "WARNING: this volume has been previously migrated using 'openstack volume migrate', but the UUID for the new volume could not be determined."
+				continue
+			fi
+
+            stdout "INFO: The following volume has been previously migrated using 'openstack volume migrate':"
+		else
+			mig_status="-"
+			mig_name_id="-"
+        fi
+
         is_bootable=$(cat ${volume_db} | jq '.bootable' | sed -e "s/\"//g")
         if [ -z "${is_bootable}" ]; then
             stdout "WARNING: failed to discovery is_bootable for volume ${colval}"
@@ -320,7 +334,7 @@ discover() {
             bootvol_type="${vol_type}"
         fi
 
-        extravol_metadata[(extra_idx++)]="${colval}|${vol_device}|${is_bootable}|${vol_type}|${vol_size_gb}"
+        extravol_metadata[(extra_idx++)]="${colval}|${vol_device}|${is_bootable}|${vol_type}|${vol_size_gb}|${mig_status}|${mig_name_id}"
         print_voume_row "${colval}" "${vol_device}" "${is_bootable}" "${vol_type}" "${vol_size_gb}" "${vol_migration_time}"
         ((num_volumes++))
     done
@@ -382,10 +396,12 @@ discover() {
         extravol_device=$(echo ${colval} | cut -d '|' -f2)
         extravol_is_bootable=$(echo ${colval} | cut -d '|' -f3)
         extravol_type=$(echo ${colval} | cut -d '|' -f4)
+		extravol_mig_status=$(echo ${colval} | cut -d '|' -f6)
+		extravol_mig_name_id=$(echo ${colval} | cut -d '|' -f7)
 
         extravol_device_short=$(echo ${extravol_device} | cut -d '/' -f3)
         extravol_name="${discovery_instanceName}-${extravol_device_short}"
-        echo "instanceVol|${discovery_instanceName}|${extravol_name}|${extravol_type}|${extravol_uuid}|${project_name}|${extravol_device}|${extravol_is_bootable}" >> ${config_file}
+        echo "instanceVol|${discovery_instanceName}|${extravol_name}|${extravol_type}|${extravol_uuid}|${project_name}|${extravol_device}|${extravol_is_bootable}|${extravol_mig_status}|${extravol_mig_name_id}" >> ${config_file}
     done
 
     # config -> extra security groups
